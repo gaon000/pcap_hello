@@ -1,4 +1,11 @@
+#include<pcap.h>
 #include<stdio.h>
+
+void usage(){
+    print("syntax: pcap_text <interface\n");
+    print("sample: pcap_text wlan0\n");
+}
+
 int main(int argc, char* argv[]){
     if (argc != 2){
         usage();
