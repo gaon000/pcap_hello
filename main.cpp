@@ -11,6 +11,7 @@ int main(int argc, char* argv[]){
         usage();
         return -1;
     }
+    
 char * dev = argv[1];
 char errbuf[PCAP_ERRBUF_SIZE];
 pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
