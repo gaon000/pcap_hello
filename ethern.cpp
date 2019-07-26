@@ -4,9 +4,7 @@
 #include <arpa/inet.h>
 #include "protocol/all.h"
 #include "packet.h"
-
-
-
+#include <string.h>
 
 
 
@@ -40,7 +38,7 @@ int main(int argc, char *argv[])
         int res = pcap_next_ex(handle, &header, &packet);
         const ether_header *eth = (ether_header *)packet;
         int packetIndex = sizeof(ether_header);
-        
+
         if (res == 0)
             continue;
         if (res == -1 || res == -2)
@@ -52,8 +50,8 @@ int main(int argc, char *argv[])
 
         if (ntohs(eth->ether_type) == ETHERTYPE_ARP)
         {
-            
-            const arp_header* arp = (arp_header*)(packet + packetIndex);
+
+            const arp_header *arp = (arp_header *)(packet + packetIndex);
             printf("sender_mac_address:  ");
             printMacAddress(arp->sender_mac);
             printf("target_mac_address:  ");
@@ -62,10 +60,8 @@ int main(int argc, char *argv[])
             printIPAddress(arp->sender_ip);
             printf("target_ip:  ");
             printIPAddress(arp->target_ip);
-            
-            printf("ARP\n");
 
-            
+            printf("ARP\n");
         }
         else if (ntohs(eth->ether_type) == ETHERTYPE_IP)
         {
@@ -83,6 +79,7 @@ int main(int argc, char *argv[])
             {
                 const tcp_header *tcp = (tcp_header *)(packet + packetIndex);
                 packetIndex += sizeof(tcp_header);
+                printf("tcp_header %d\n", sizeof(tcp_header));
                 printf("TCP SRC PORT: ");
                 printTCPPort(ntohs(tcp->th_sport));
                 printf("\n");
@@ -92,13 +89,16 @@ int main(int argc, char *argv[])
                 uint32_t tcp_size = (ntohs(iph->ip_len)) - ((iph->ip_hl + tcp->th_off) * 4);
                 if (tcp_size > 0)
                 {
+                    if(isHTTPProtocol(packet+packetIndex, tcp_size))
                     printf("=============\n");
-                    printPacket(packet + packetIndex, tcp_size);
+                    printf("%s\n", packet+packetIndex);
+                    // printTCPData(packet + packetIndex, tcp_size);
                     printf("=============\n");
                 }
             }
-            else if(iph->ip_p == IPPROTO_UDP){
-                const udphdr *udp = (udphdr *)(packet+packetIndex);
+            else if (iph->ip_p == IPPROTO_UDP)
+            {
+                const udphdr *udp = (udphdr *)(packet + packetIndex);
                 packetIndex += sizeof(udphdr);
                 printf("UDP SRC PORT: ");
                 printUDPPort(ntohs(udp->source));
@@ -106,19 +106,35 @@ int main(int argc, char *argv[])
                 printf("UDP DEST PORT: ");
                 printUDPPort(ntohs(udp->dest));
                 printf("\n");
-                uint32_t udp_size = (ntohs(iph->ip_len))-(ntohs(udp->len));
-                if(udp_size > 0){
+                uint32_t udp_size = (ntohs(iph->ip_len)) - (ntohs(udp->len));
+                if (udp_size > 0)
+                {
                     printf("==============\n");
                     printPacket(packet + packetIndex, udp_size);
                     printf("==============\n");
                 }
-                
+            }
+            else if (iph->ip_p == IPPROTO_ICMP)
+            {
+                const icmphdr *icmp = (icmphdr *)(packet + packetIndex);
+                packetIndex += sizeof(icmphdr);
+                printf("ICMP TYPE: %d\n", icmp->type);
+                printf("ICMP CODE: %d\n", icmp->code);
+                printf("ICMP CHECKSUM :0x%x\n", icmp->checksum);
+                uint32_t icmp_size = ntohs(iph->ip_len) - sizeof(ip_header) - sizeof(icmphdr);
+                // printf("%d\n", icmp_size);
+                if (icmp_size > 0)
+                {
+                    printf("===============\n");
+                    printPacket(packet + packetIndex, icmp_size);
+                    printf("===============\n");
+                }
             }
         }
-        else if (ntohs(eth->ether_type) == ETHERTYPE_AARP)
-        {
-            printf("type: arp\n");
-        }
+        // else if (ntohs(eth->ether_type) == ETHERTYPE_AARP)
+        // {
+        // printf("type: arp\n");
+        // }
     }
     pcap_close(handle);
     return 0;
